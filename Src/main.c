@@ -34,6 +34,9 @@
 #include "stm32f4xx_hal.h"
 #include "usb_device.h"
 #include "usbd_cdc_if.h"
+#include "stm32f4_discovery.h"
+#include "stm32f4_discovery_accelerometer.h"
+#include "mems.h"
 
 /* USER CODE BEGIN Includes */
 
@@ -44,6 +47,20 @@
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 char buf[4];
+
+uint8_t DemoIndex = 0;
+
+BSP_DemoTypedef  BSP_examples[]={
+  {ACCELERO_MEMS_Test, "LIS302DL or LIS3DSH", 0}  
+};
+
+__IO uint8_t UserPressButton = 0;
+
+///* Wave Player Pause/Resume Status. Defined as external in waveplayer.c file */
+//__IO uint32_t PauseResumeStatus = IDLE_STATUS;   
+//
+///* Counter for User button presses*/
+//__IO uint32_t PressCount = 0;
 
 
 /* USER CODE END PV */
@@ -78,9 +95,26 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USB_DEVICE_Init();
+  /* Configure LED3, LED4, LED5 and LED6 */
+  BSP_LED_Init(LED3);
+  BSP_LED_Init(LED4); 
+  BSP_LED_Init(LED5);
+  BSP_LED_Init(LED6);
+    /* Configure USER Button */
+  BSP_PB_Init(BUTTON_KEY, BUTTON_MODE_EXTI);
 
   /* USER CODE BEGIN 2 */
-  uint8_t HiMsg[]="hello\r\n";
+//  uint8_t HiMsg[]="hello\r\n";
+    /* Toggle LEDs between each Test */
+  while (!UserPressButton)
+  {
+    Toggle_Leds();
+  }
+    
+  BSP_LED_Off(LED3);
+  BSP_LED_Off(LED4);
+  BSP_LED_Off(LED5);
+  BSP_LED_Off(LED6);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -88,11 +122,19 @@ int main(void)
   while (1)
   {
   /* USER CODE END WHILE */
+    UserPressButton = 0;
+    BSP_examples[DemoIndex].DemoFunc();
     
-//    if(CDC_Receive_FS(buf,strlen(buf)))
-    CDC_Transmit_FS(HiMsg,strlen(HiMsg));
-    HAL_GPIO_TogglePin(GPIOD, LD4_Pin);
-    HAL_Delay(1000);
+    UserPressButton = 0;
+    while (!UserPressButton) Toggle_Leds();
+    BSP_LED_Off(LED3);
+    BSP_LED_Off(LED4);
+    BSP_LED_Off(LED5);
+    BSP_LED_Off(LED6);
+
+//    CDC_Transmit_FS(HiMsg,strlen(HiMsg));
+//    HAL_GPIO_TogglePin(GPIOD, LD4_Pin);
+//    HAL_Delay(1000);
   /* USER CODE BEGIN 3 */
 
   }
@@ -274,6 +316,69 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MEMS_INT2_GPIO_Port, &GPIO_InitStruct);
 
+}
+
+/**
+  * @brief  Toggle LEDs
+  * @param  None
+  * @retval None
+  */
+void Toggle_Leds(void)
+{
+  BSP_LED_Toggle(LED3);
+  HAL_Delay(100);
+  BSP_LED_Toggle(LED4);
+  HAL_Delay(100);
+  BSP_LED_Toggle(LED5);
+  HAL_Delay(100);
+  BSP_LED_Toggle(LED6);
+  HAL_Delay(100);
+}
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @param  None
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* Turn LED5 on */
+  BSP_LED_On(LED5);
+  while(1)
+  {
+  }
+}
+
+/**
+  * @brief  EXTI line detection callbacks.
+  * @param  GPIO_Pin: Specifies the pins connected EXTI line
+  * @retval None
+  */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (KEY_BUTTON_PIN == GPIO_Pin)
+  {
+    while (BSP_PB_GetState(BUTTON_KEY) != RESET);
+    UserPressButton = 1;
+  }
+  
+  if(ACCELERO_INT2_PIN == GPIO_Pin) 
+  {
+    /* Clear MEMS click interruption */
+    BSP_ACCELERO_Click_ITClear();
+//    if (PressCount == 1)
+//    {
+//      /* Resume playing Wave status */
+//      PauseResumeStatus = RESUME_STATUS;
+//      PressCount = 0;
+//    }
+//    else
+//    {
+//      /* Pause playing Wave status */
+//      PauseResumeStatus = PAUSE_STATUS;
+//      PressCount = 1;
+//    }
+  }
 }
 
 /* USER CODE BEGIN 4 */
